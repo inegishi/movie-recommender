@@ -6,15 +6,15 @@ from tensorflow import keras
 from sklearn.model_selection import train_test_split
 
 
-
-df = pd.read_csv("dataset/ratings_subset.csv")
+#creating dataframe
+df = pd.read_csv("dataset/full-dataset/ratings.csv")
 movies_df = pd.read_csv("dataset/full-dataset/movies.csv")
 
 #index to userId
 df["user_idx"] = df["userId"].astype("category").cat.codes
 #index to movieID
 df["movie_idx"] = df["movieId"].astype("category").cat.codes
-
+#making a dict for easy remapping
 idx_to_movie_id = dict(enumerate(df["movieId"].astype("category").cat.categories))
 movie_id_to_title = dict(zip(movies_df["movieId"], movies_df["title"]))
 
@@ -22,8 +22,9 @@ def model_train():
     """
     trains a model from given dataset
     """
-    #input features
+    #get input features X with jsut the user_idx and movie_idx columns
     X = df[["user_idx","movie_idx"]].values
+    #get the true y values, the rating column
     y = df["rating"].values
     #split into train and train
     X_train,X_test,y_train,y_test = train_test_split(
@@ -54,20 +55,25 @@ def model_train():
 
     # Build model
     model = tf.keras.Model(inputs=[user_input, movie_input], outputs=output)
-
+    # model = tf.keras.models.load_model("models/model1.keras")
     # Compile
     model.compile(optimizer='adam', loss='mse', metrics=['mae'])
 
     model.fit(
         [X_train[:, 0], X_train[:, 1]],  # user_idx, movie_idx
         y_train,                         # actual ratings
-        epochs=5,                        # try 5 to start, can increase later
+        epochs=10,                       # try 5 to start, can increase later
         batch_size=64,                  # how many samples per training step
         validation_split=0.1,           # 10% of training data used for validation
         verbose=1                        # shows training progress
     )
+    prediction = model.predict([X_test[:,0], X_test[:,1]])    
+    print(prediction.shape)
+    for i in range(5):
+        print(prediction[i][0], y_test[i]) 
 
-    model.save("models/test_model.keras")
+
+    model.save("models/model1.keras")
 
 
 def predict(model_path,user_id,n):
@@ -90,7 +96,10 @@ def predict(model_path,user_id,n):
     results.sort(key=lambda x: x[1], reverse=True)
     return results[:n] 
 
-result = predict("models/test_model.keras",3,5)
-for count,i in enumerate(result):
-    movie_id = idx_to_movie_id[i[0]]
-    print(f"movie {count+1}: {movie_id_to_title[movie_id]}, predicted rating: {i[1]:.2f}")
+# result = predict("models/model1.keras",10,5)
+# for count,i in enumerate(result):
+#     movie_id = idx_to_movie_id[i[0]]
+#     sig = 1/(1+np.exp(-i[1]))
+#     print(f"movie {count+1}: {movie_id_to_title[movie_id]}, predicted rating: {sig*5:.2f}")
+
+model_train()
